@@ -36,7 +36,7 @@
 (require 'cl-macs)
 
 (defconst helm-hunks--diff-re
-  "^@@ -\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? \\+\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? @@ ?\\(.*\\)?$"
+  "^@@ -\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? \\+\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? @@"
   "Regex to match the git diff hunk lines, e.g `@@ -{del-line},{del-len} +{add-line},{add-len} @@'")
 
 (defvar helm-hunks--cmd-file-names
@@ -61,45 +61,58 @@
          (raw-file-names (split-string result "\r?\n")))
     (delete "" raw-file-names)))
 
+(defun helm-hunks--remove-header-lines (diff-lines)
+  "Remove the 4 header lines preceding each file's hunks"
+  (mapcar (lambda (diff)
+            (string-join
+             (nthcdr 4
+                     (split-string diff "\r?\n"))
+             "\n"))
+          diff-lines))
+
 (defun helm-hunks--get-diffs ()
   "List raw diffs"
   (let* ((result (shell-command-to-string helm-hunks--cmd-diffs))
          (raw-diff-lines (split-string result "diff --git a/")))
-    (delete "" raw-diff-lines)))
+    (helm-hunks--remove-header-lines (delete "" raw-diff-lines))))
+
+(defun helm-hunks--extract-hunk-lines (diffs)
+  "Split on @@ to group lists of each hunk's header and content lines in a list"
+  (mapcar (lambda (diff)
+            (mapcar (lambda (hunk)
+                      (concat "@@" hunk))
+                    (delete "" (split-string diff "^@@"))))
+          diffs))
 
 (defun helm-hunks--get-git-root ()
   (let* ((result (shell-command-to-string helm-hunks--cmd-git-root)))
     (file-name-as-directory
      (replace-regexp-in-string "\r?\n" "" result))))
 
-(defun helm-hunks--is-hunk-line (line)
-  "Predicate to tell if `line' is a diff line"
-  (string-match-p "^@@" line))
-
-(defun helm-hunks--extract-hunk-lines (diff-lines)
-  "Filters hunk lines from `diff-lines'"
-  (remove-if-not 'helm-hunks--is-hunk-line (split-string diff-lines "\r?\n")))
-
 (defun helm-hunks--get-hunk-lines-per-file ()
   "List file names and their changed hunks"
-  (mapcar 'helm-hunks--extract-hunk-lines (helm-hunks--get-diffs)))
+  (helm-hunks--extract-hunk-lines (helm-hunks--get-diffs)))
 
-(defun helm-hunks--parse-hunk (hunk-line)
+(defun helm-hunks--parse-hunk (raw-hunk-line)
   "Parse `hunk-line' in to hunk with `line', `content' and the `type' of change"
-  (when (string-match helm-hunks--diff-re hunk-line)
-    (let* ((del-len (string-to-number (or (match-string 2 hunk-line) "1")))
-           (add-line (string-to-number (match-string 3 hunk-line)))
-           (add-len (string-to-number (or (match-string 4 hunk-line) "1")))
-           (content (match-string 5 hunk-line))
-           (type (cond ((zerop del-len) 'added)
-                       ((zerop add-len) 'deleted)
-                       (t 'modified)))
-           (line (if (eq type 'deleted)
-                     (1+ add-line)
-                   add-line)))
-      (list (cons 'content content)
-            (cons 'type type)
-            (cons 'line line)))))
+  (let* ((split-hunk (split-string raw-hunk-line "\r?\n"))
+         (hunk-header-line (car split-hunk))
+         (content-lines (rest split-hunk)))
+    (when (string-match helm-hunks--diff-re hunk-header-line)
+      (let* ((del-len (string-to-number (or (match-string 2 hunk-header-line) "1")))
+             (add-line (string-to-number (match-string 3 hunk-header-line)))
+             (add-len (string-to-number (or (match-string 4 hunk-header-line) "1")))
+             (content (string-join content-lines "\n"))
+             (type (cond ((zerop del-len) 'added)
+                         ((zerop add-len) 'deleted)
+                         (t 'modified)))
+             (line (if (eq type 'deleted)
+                       (1+ add-line)
+                     add-line)))
+        (list (cons 'header hunk-header-line)
+              (cons 'content content)
+              (cons 'type type)
+              (cons 'line line))))))
 
 (defun helm-hunks--assoc-file-name (file-name hunks)
   "Associates `file' name with each hunk of the list."
@@ -123,7 +136,7 @@
            (type (cdr (assoc 'type hunk)))
            (content (cdr (assoc 'content hunk))))
       (if (not (equal "" content))
-          (format "%s:%s (%s) - %s" file line type content)
+          (format "%s:%s (%s)\n%s" file line type content)
         (format "%s:%s (%s)" file line type)))))
 
 (defun helm-hunks--find-hunk-with-fn (find-file-fn real)
@@ -167,7 +180,8 @@
 (defun helm-hunks--changes ()
   "List changes, on the form (display . real) suitable as candidates for the helm-hunks source"
   (reverse
-   (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names) (helm-hunks--get-hunk-lines-per-file)))
+   (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names)
+                                                        (helm-hunks--get-hunk-lines-per-file)))
           (changes nil))
      (dolist (hunk-by-file hunks-by-file changes)
        (let* ((file (car hunk-by-file))
@@ -180,7 +194,7 @@
   "Candidates for the helm-hunks source, on the form (display . real)"
   (let ((candidates (helm-hunks--changes)))
     (if (seq-empty-p candidates)
-         `((,helm-hunks--msg-no-changes . nil))
+        `((,helm-hunks--msg-no-changes . nil))
       candidates)))
 
 (defun helm-hunks--action-find-hunk (real)
