@@ -115,7 +115,7 @@
     (goto-line line)))
 
 (defun helm-hunks--candidates ()
-  "Candidates for the helm-hunk source, on the form (display . real)"
+  "Candidates for the helm-hunks source, on the form (display . real)"
   (reverse
    (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names) (helm-hunks--get-hunk-lines-per-file)))
           (changes '()))
@@ -127,11 +127,11 @@
                  changes)))))))
 
 (defun helm-hunks--action (real)
-  "Action to trigger on RET, for the helm-hunk source"
+  "Action to trigger on RET, for the helm-hunks source"
   (helm-hunks--display-hunk real))
 
 (defun helm-hunks--persistent-action (real)
-  "Persistent action to trigger on follow, for the helm-hunk source"
+  "Persistent action to trigger on follow, for the helm-hunks source"
   (helm-hunks--display-hunk real))
 
 (defvar helm-hunks--source
@@ -140,10 +140,10 @@
     :action 'helm-hunks--action
     :persistent-action 'helm-hunks--persistent-action
     :follow 1)
-  "Helm-hunk source to list changed hunks in the project")
+  "Helm-hunks source to list changed hunks in the project")
 
 ;;;###autoload
 (defun helm-hunks ()
-  "Helm-hunk entry point"
+  "Helm-hunks entry point"
   (interactive)
   (helm :sources '(helm-hunks--source)))
