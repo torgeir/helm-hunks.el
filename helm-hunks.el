@@ -39,6 +39,10 @@
   "git rev-parse --show-toplevel"
   "Git command to find the root folder of the current repo")
 
+(defvar helm-hunks--msg-no-changes
+  "No changes."
+  "Message shown in the helm buffer when there are no changed hunks")
+
 (defun helm-hunks--get-file-names ()
   "List file names of changed files"
   (let* ((result (shell-command-to-string helm-hunks--cmd-file-names))
@@ -100,11 +104,12 @@
 
 (defun helm-hunks--format-candidate-display (file hunk)
   "Formats a hunk for display as a line in helm"
-  (let* ((line (cdr (assoc 'line hunk)))
-         (content (cdr (assoc 'content hunk))))
-    (if (not (equal "" content))
-        (format "%s:%s - %s" file line content)
-      (format "%s:%s" file line))))
+  (unless (equal file helm-hunks--msg-no-changes)
+    (let* ((line (cdr (assoc 'line hunk)))
+           (content (cdr (assoc 'content hunk))))
+      (if (not (equal "" content))
+          (format "%s:%s - %s" file line content)
+        (format "%s:%s" file line)))))
 
 (defun helm-hunks--display-hunk (real)
   "Jump to the line in the file that changed"
@@ -114,8 +119,8 @@
     (find-file file-path)
     (goto-line line)))
 
-(defun helm-hunks--candidates ()
-  "Candidates for the helm-hunks source, on the form (display . real)"
+(defun helm-hunks--changes ()
+  "List changes, on the form (display . real) suitable as candidates for the helm-hunks source"
   (reverse
    (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names) (helm-hunks--get-hunk-lines-per-file)))
           (changes nil))
@@ -126,20 +131,29 @@
            (push `(,(helm-hunks--format-candidate-display file hunk) . ,hunk)
                  changes)))))))
 
-(defun helm-hunks--action (real)
+(defun helm-hunks--candidates ()
+  "Candidates for the helm-hunks source, on the form (display . real)"
+  (let ((candidates (helm-hunks--changes)))
+    (if (seq-empty-p candidates)
+        `((,helm-hunks--msg-no-changes))
+      candidates)))
+
 (defun helm-hunks--action-display-hunk (real)
   "Action to trigger on RET, for the helm-hunks source"
-  (helm-hunks--display-hunk real))
+  (unless (equal real helm-hunks--msg-no-changes)
+    (helm-hunks--display-hunk real)))
 
 (defun helm-hunks--persistent-action (real)
   "Persistent action to trigger on follow, for the helm-hunks source"
-  (helm-hunks--display-hunk real))
+  (unless (equal real helm-hunks--msg-no-changes)
+    (helm-hunks--display-hunk real)))
 
 (defvar helm-hunks--source
   (helm-build-async-source "Show hunks in project"
     :candidates-process 'helm-hunks--candidates
     :action '(("Go to hunk" . helm-hunks--action-display-hunk))
     :persistent-action 'helm-hunks--persistent-action
+    :multiline t
     :nomark t
     :follow 1)
   "Helm-hunks source to list changed hunks in the project")
