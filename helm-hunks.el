@@ -69,7 +69,8 @@
 
 (defun helm-hunks--get-git-root ()
   (let* ((result (shell-command-to-string helm-hunks--cmd-git-root)))
-    (replace-regexp-in-string "\r?\n" "" result)))
+    (file-name-as-directory
+     (replace-regexp-in-string "\r?\n" "" result))))
 
 (defun helm-hunks--is-hunk-line (line)
   "Predicate to tell if `line' is a diff line"
@@ -128,7 +129,7 @@
   "Jump to the changed line in the file using the provided `find-file-fn' function"
   (let* ((file (cdr (assoc 'file real)))
          (line (cdr (assoc 'line real)))
-         (file-path (concat (helm-hunks--get-git-root) "/" file)))
+         (file-path (concat (helm-hunks--get-git-root) file)))
     (funcall find-file-fn file-path)
     (goto-line line)))
 
