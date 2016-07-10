@@ -35,6 +35,10 @@
   "git --no-pager diff --no-color --no-ext-diff -U0"
   "Git command to show minimal diffs")
 
+(defvar helm-hunks--cmd-git-root
+  "git rev-parse --show-toplevel"
+  "Git command to find the root folder of the current repo")
+
 (defun helm-hunks--get-file-names ()
   "List file names of changed files"
   (let* ((result (shell-command-to-string helm-hunks--cmd-file-names))
@@ -46,6 +50,10 @@
   (let* ((result (shell-command-to-string helm-hunks--cmd-diffs))
          (raw-diff-lines (split-string result "diff --git a/")))
     (delete "" raw-diff-lines)))
+
+(defun helm-hunks--get-git-root ()
+  (let* ((result (shell-command-to-string helm-hunks--cmd-git-root)))
+    (replace-regexp-in-string "\r?\n" "" result)))
 
 (defun helm-hunks--is-hunk-line (line)
   "Predicate to tell if `line' is a diff line"
@@ -102,7 +110,7 @@
   "Jump to the line in the file that changed"
   (let* ((file (cdr (assoc 'file real)))
          (line (cdr (assoc 'line real)))
-         (file-path (concat (projectile-project-root) file)))
+         (file-path (concat (helm-hunks--get-git-root) "/" file)))
     (find-file file-path)
     (goto-line line)))
 
