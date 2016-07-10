@@ -127,6 +127,7 @@
                  changes)))))))
 
 (defun helm-hunks--action (real)
+(defun helm-hunks--action-display-hunk (real)
   "Action to trigger on RET, for the helm-hunks source"
   (helm-hunks--display-hunk real))
 
@@ -137,8 +138,9 @@
 (defvar helm-hunks--source
   (helm-build-async-source "Show hunks in project"
     :candidates-process 'helm-hunks--candidates
-    :action 'helm-hunks--action
+    :action '(("Go to hunk" . helm-hunks--action-display-hunk))
     :persistent-action 'helm-hunks--persistent-action
+    :nomark t
     :follow 1)
   "Helm-hunks source to list changed hunks in the project")
 
