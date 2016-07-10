@@ -19,10 +19,17 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+;;; Commentary:
+
+;; A helm interface for browsing unstaged git hunks.
+;;
+;; Enable `helm-follow-mode' and trigger `helm-hunks' to jump around
+;; unstaged hunks like never before.
+
 ;;; Todo:
 
-;; TODO helm hunks, stage hunk
-;; TODO helm hunks, kill hunk
+;; TODO stage visited hunk from helm-hunks
+;; TODO kill visited hunk from helm-hunks
 
 ;;; Code:
 
