@@ -19,6 +19,11 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+;;; Todo:
+
+;; TODO helm hunks, stage hunk
+;; TODO helm hunks, kill hunk
+
 ;;; Code:
 
 (require 'cl-macs)
