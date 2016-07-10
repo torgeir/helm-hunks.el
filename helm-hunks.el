@@ -89,14 +89,15 @@
            (line (if (eq type 'deleted)
                      (1+ add-line)
                    add-line)))
-      (list `(content . ,content)
-            `(type . ,type)
-            `(line . ,line)))))
+      (list (cons 'content content)
+            (cons 'type type)
+            (cons 'line line)))))
 
 (defun helm-hunks--assoc-file-name (file-name hunks)
   "Associates `file' name with each hunk of the list."
   (mapcar (lambda (hunk)
-            (cons `(file . ,file-name) hunk))
+            (cons (cons 'file file-name)
+                  hunk))
           hunks))
 
 (defun helm-hunks--get-hunks-by-file (file-names hunk-lines-per-file)
@@ -170,7 +171,7 @@
   "Candidates for the helm-hunks source, on the form (display . real)"
   (let ((candidates (helm-hunks--changes)))
     (if (seq-empty-p candidates)
-        `((,helm-hunks--msg-no-changes))
+         `((,helm-hunks--msg-no-changes . nil))
       candidates)))
 
 (defun helm-hunks--action-find-hunk (real)
