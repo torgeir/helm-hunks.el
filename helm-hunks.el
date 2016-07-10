@@ -118,7 +118,7 @@
   "Candidates for the helm-hunks source, on the form (display . real)"
   (reverse
    (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names) (helm-hunks--get-hunk-lines-per-file)))
-          (changes '()))
+          (changes nil))
      (dolist (hunk-by-file hunks-by-file changes)
        (let* ((file (car hunk-by-file))
               (hunks (cdr hunk-by-file)))
