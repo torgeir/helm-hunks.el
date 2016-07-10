@@ -120,10 +120,11 @@
   "Formats a hunk for display as a line in helm"
   (unless (equal file helm-hunks--msg-no-changes)
     (let* ((line (cdr (assoc 'line hunk)))
+           (type (cdr (assoc 'type hunk)))
            (content (cdr (assoc 'content hunk))))
       (if (not (equal "" content))
-          (format "%s:%s - %s" file line content)
-        (format "%s:%s" file line)))))
+          (format "%s:%s (%s) - %s" file line type content)
+        (format "%s:%s (%s)" file line type)))))
 
 (defun helm-hunks--find-hunk-with-fn (find-file-fn real)
   "Jump to the changed line in the file using the provided `find-file-fn' function"
