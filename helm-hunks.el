@@ -116,13 +116,43 @@
           (format "%s:%s - %s" file line content)
         (format "%s:%s" file line)))))
 
-(defun helm-hunks--display-hunk (real)
-  "Jump to the line in the file that changed"
+(defun helm-hunks--find-hunk-with-fn (find-file-fn real)
+  "Jump to the changed line in the file using the provided `find-file-fn' function"
   (let* ((file (cdr (assoc 'file real)))
          (line (cdr (assoc 'line real)))
          (file-path (concat (helm-hunks--get-git-root) "/" file)))
-    (find-file file-path)
+    (funcall find-file-fn file-path)
     (goto-line line)))
+
+(defun helm-hunks--action-find-hunk (real)
+  "Jump to the changed line in the file using `find-file'"
+  (helm-hunks--find-hunk-with-fn #'find-file real))
+
+(defun helm-hunks--action-find-hunk-other-frame (real)
+  "Jump to the changed line in the file using `find-file-other-frame'"
+  (helm-hunks--find-hunk-with-fn #'find-file-other-frame real))
+
+(defun helm-hunks--action-find-hunk-other-window (real)
+  "Jump to the changed line in the file using `find-file-other-window'"
+  (helm-hunks--find-hunk-with-fn #'find-file-other-window real))
+
+(defun helm-hunks--find-hunk ()
+  "Interactive defun to jump to the changed line in the file"
+  (interactive)
+  (with-helm-alive-p
+    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk)))
+
+(defun helm-hunks--find-hunk-other-frame ()
+  "Interactive defun to jump to the changed line in the file in another frame"
+  (interactive)
+  (with-helm-alive-p
+    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-frame)))
+
+(defun helm-hunks--find-hunk-other-window ()
+  "Interactive defun to jump to the changed line in the file in another window"
+  (interactive)
+  (with-helm-alive-p
+    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-window)))
 
 (defun helm-hunks--changes ()
   "List changes, on the form (display . real) suitable as candidates for the helm-hunks source"
@@ -143,28 +173,41 @@
         `((,helm-hunks--msg-no-changes))
       candidates)))
 
-(defun helm-hunks--action-display-hunk (real)
+(defun helm-hunks--action-find-hunk (real)
   "Action to trigger on RET, for the helm-hunks source"
   (unless (equal real helm-hunks--msg-no-changes)
-    (helm-hunks--display-hunk real)))
+    (helm-hunks--find-hunk-with-fn #'find-file real)))
 
 (defun helm-hunks--persistent-action (real)
   "Persistent action to trigger on follow, for the helm-hunks source"
   (unless (equal real helm-hunks--msg-no-changes)
-    (helm-hunks--display-hunk real)))
+    (helm-hunks--find-hunk-with-fn #'find-file real)))
 
 (defvar helm-hunks--source
   (helm-build-async-source "Show hunks in project"
     :candidates-process 'helm-hunks--candidates
-    :action '(("Go to hunk" . helm-hunks--action-display-hunk))
+    :action '(("Go to hunk" . helm-hunks--action-find-hunk))
     :persistent-action 'helm-hunks--persistent-action
     :multiline t
     :nomark t
     :follow 1)
   "Helm-hunks source to list changed hunks in the project")
 
+(defvar helm-hunks--keymap
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map helm-map)
+    ;; TODO
+    ;; (define-key map (kbd "C-r") 'helm-hunks--revert-hunk)
+    ;; TODO
+    ;; (define-key map (kbd "C-s") 'helm-hunks--stage-hunk)
+    (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame)
+    (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window)
+    map)
+  "Keymap for `helm-hunks'")
+
 ;;;###autoload
 (defun helm-hunks ()
   "Helm-hunks entry point"
   (interactive)
-  (helm :sources '(helm-hunks--source)))
+  (helm :sources '(helm-hunks--source)
+        :keymap helm-hunks--keymap))
