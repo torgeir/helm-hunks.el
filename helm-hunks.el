@@ -61,43 +61,29 @@
          (raw-file-names (split-string result "\r?\n")))
     (delete "" raw-file-names)))
 
-(defun helm-hunks--remove-header-lines (diff-lines)
-  "Remove the 4 header lines preceding each file's hunks"
-  (mapcar (lambda (diff)
-            (string-join
-             (nthcdr 4
-                     (split-string diff "\r?\n"))
-             "\n"))
-          diff-lines))
-
 (defun helm-hunks--get-diffs ()
   "List raw diffs"
   (let* ((result (shell-command-to-string helm-hunks--cmd-diffs))
          (raw-diff-lines (split-string result "diff --git a/")))
-    (helm-hunks--remove-header-lines (delete "" raw-diff-lines))))
+    (delete "" raw-diff-lines)))
 
-(defun helm-hunks--extract-hunk-lines (diffs)
+(defun helm-hunks--extract-hunk-lines (diff)
   "Split on @@ to group lists of each hunk's header and content lines in a list"
-  (mapcar (lambda (diff)
-            (mapcar (lambda (hunk)
-                      (concat "@@" hunk))
-                    (delete "" (split-string diff "^@@"))))
-          diffs))
+  (mapcar (lambda (hunk)
+            (concat "@@" hunk))
+          (delete "" (split-string diff "^@@"))))
 
 (defun helm-hunks--get-git-root ()
+  "Get the root folder of the current git repository"
   (let* ((result (shell-command-to-string helm-hunks--cmd-git-root)))
     (file-name-as-directory
      (replace-regexp-in-string "\r?\n" "" result))))
 
-(defun helm-hunks--get-hunk-lines-per-file ()
-  "List file names and their changed hunks"
-  (helm-hunks--extract-hunk-lines (helm-hunks--get-diffs)))
-
-(defun helm-hunks--parse-hunk (raw-hunk-line)
-  "Parse `hunk-line' in to hunk with `line', `content' and the `type' of change"
-  (let* ((split-hunk (split-string raw-hunk-line "\r?\n"))
-         (hunk-header-line (car split-hunk))
-         (content-lines (rest split-hunk)))
+(defun helm-hunks--parse-hunk (diff-header-str hunk-str)
+  "Parse `raw-hunk' into hunk with `line', `content' and the `type' of change"
+  (let* ((hunk-lines (split-string hunk-str "\n"))
+         (hunk-header-line (car hunk-lines))
+         (content-lines (rest hunk-lines)))
     (when (string-match helm-hunks--diff-re hunk-header-line)
       (let* ((del-len (string-to-number (or (match-string 2 hunk-header-line) "1")))
              (add-line (string-to-number (match-string 3 hunk-header-line)))
@@ -109,7 +95,8 @@
              (line (if (eq type 'deleted)
                        (1+ add-line)
                      add-line)))
-        (list (cons 'header hunk-header-line)
+        (list (cons 'diff-header diff-header-str)
+              (cons 'hunk-header hunk-header-line)
               (cons 'content content)
               (cons 'type type)
               (cons 'line line))))))
@@ -121,11 +108,18 @@
                   hunk))
           hunks))
 
-(defun helm-hunks--get-hunks-by-file (file-names hunk-lines-per-file)
+(defun helm-hunks--get-hunks-by-file (file-names diffs-per-file)
   "Join the changed file names with their corresponding hunks in a list"
   (cl-loop for file-name in file-names
-           for hunk-lines in hunk-lines-per-file
-           collect (let* ((parsed-hunks (mapcar 'helm-hunks--parse-hunk hunk-lines))
+           for diff-str in diffs-per-file
+           collect (let* ((split-hunk (split-string diff-str "\r?\n"))
+                          (diff-header-lines (subseq split-hunk 0 4))
+                          (diff-header-str (string-join diff-header-lines "\n"))
+                          (rest-str (string-join (nthcdr 4 split-hunk) "\n"))
+                          (hunks-lines (helm-hunks--extract-hunk-lines rest-str))
+                          (parsed-hunks (mapcar (lambda (hunk-lines)
+                                                  (helm-hunks--parse-hunk diff-header-str hunk-lines))
+                                                hunks-lines))
                           (parsed-hunks-with-file (helm-hunks--assoc-file-name file-name parsed-hunks)))
                      (cons file-name parsed-hunks-with-file))))
 
@@ -181,7 +175,7 @@
   "List changes, on the form (display . real) suitable as candidates for the helm-hunks source"
   (reverse
    (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names)
-                                                        (helm-hunks--get-hunk-lines-per-file)))
+                                                        (helm-hunks--get-diffs)))
           (changes nil))
      (dolist (hunk-by-file hunks-by-file changes)
        (let* ((file (car hunk-by-file))
