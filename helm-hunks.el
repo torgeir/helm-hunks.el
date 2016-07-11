@@ -44,7 +44,7 @@
   "Git command to return names of the changed files")
 
 (defvar helm-hunks--cmd-diffs
-  "git --no-pager diff --no-color --no-ext-diff -U0"
+  "git --no-pager diff --no-color --no-ext-diff --unified=0"
   "Git command to show minimal diffs")
 
 (defvar helm-hunks--cmd-git-root
