@@ -55,6 +55,10 @@
   "No changes."
   "Message shown in the helm buffer when there are no changed hunks")
 
+(defvar helm-hunks--is-preview
+  nil
+  "Is preview mode enabled, to show diff lines preview inside helm while navigating")
+
 (defun helm-hunks--get-file-names ()
   "List file names of changed files"
   (let* ((result (shell-command-to-string helm-hunks--cmd-file-names))
@@ -123,13 +127,21 @@
                           (parsed-hunks-with-file (helm-hunks--assoc-file-name file-name parsed-hunks)))
                      (cons file-name parsed-hunks-with-file))))
 
+(defun helm-hunks--toggle-preview ()
+  "Toggle diff lines preview mode inside helm, while helm is open"
+  (interactive)
+  (let ((is-preview (not helm-hunks--is-preview)))
+    (setq helm-hunks--is-preview is-preview)
+    (helm-refresh)))
+
 (defun helm-hunks--format-candidate-display (file hunk)
   "Formats a hunk for display as a line in helm"
   (unless (equal file helm-hunks--msg-no-changes)
     (let* ((line (cdr (assoc 'line hunk)))
            (type (cdr (assoc 'type hunk)))
            (content (cdr (assoc 'content hunk))))
-      (if (not (equal "" content))
+      (if (and helm-hunks--is-preview
+               (not (equal "" content)))
           (format "%s:%s (%s)\n%s" file line type content)
         (format "%s:%s (%s)" file line type)))))
 
@@ -220,6 +232,7 @@
     ;; (define-key map (kbd "C-s") 'helm-hunks--stage-hunk)
     (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame)
     (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window)
+    (define-key map (kbd "C-c p") 'helm-hunks--toggle-preview)
     map)
   "Keymap for `helm-hunks'")
 
