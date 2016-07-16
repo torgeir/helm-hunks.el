@@ -28,7 +28,6 @@
 
 ;;; Todo:
 
-;; TODO stage visited hunk from helm-hunks
 ;; TODO kill visited hunk from helm-hunks
 
 ;;; Code:
@@ -66,13 +65,17 @@
     (delete "" raw-file-names)))
 
 (defun helm-hunks--get-diffs ()
-  "List raw diffs"
+  "List raw diffs per changed file"
   (let* ((result (shell-command-to-string helm-hunks--cmd-diffs))
-         (raw-diff-lines (split-string result "diff --git a/")))
-    (delete "" raw-diff-lines)))
+         (split-diff-lines (split-string result "^diff --git a/"))
+         (split-diff-lines-without-empties (delete "" split-diff-lines)))
+    (mapcar (lambda (line)
+              (concat "diff --git a/" line)
+              line)
+            split-diff-lines-without-empties)))
 
 (defun helm-hunks--extract-hunk-lines (diff)
-  "Split on @@ to group lists of each hunk's header and content lines in a list"
+  "Split on ^@@ to group lists of each hunk's header and content lines in a list"
   (mapcar (lambda (hunk)
             (concat "@@" hunk))
           (delete "" (split-string diff "^@@"))))
@@ -102,6 +105,7 @@
         (list (cons 'diff-header diff-header-str)
               (cons 'hunk-header hunk-header-line)
               (cons 'content content)
+              (cons 'raw-content (concat diff-header-str "\n" hunk-str))
               (cons 'type type)
               (cons 'line line))))))
 
@@ -127,7 +131,7 @@
                           (parsed-hunks-with-file (helm-hunks--assoc-file-name file-name parsed-hunks)))
                      (cons file-name parsed-hunks-with-file))))
 
-(defun helm-hunks--toggle-preview ()
+(defun helm-hunks--toggle-preview-interactive ()
   "Toggle diff lines preview mode inside helm, while helm is open"
   (interactive)
   (let ((is-preview (not helm-hunks--is-preview)))
@@ -165,26 +169,43 @@
   "Jump to the changed line in the file using `find-file-other-window'"
   (helm-hunks--find-hunk-with-fn #'find-file-other-window real))
 
-(defun helm-hunks--find-hunk ()
-  "Interactive defun to jump to the changed line in the file"
-  (interactive)
-  (with-helm-alive-p
-    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk)))
-
-(defun helm-hunks--find-hunk-other-frame ()
+(defun helm-hunks--find-hunk-other-frame-interactive ()
   "Interactive defun to jump to the changed line in the file in another frame"
   (interactive)
   (with-helm-alive-p
     (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-frame)))
 
-(defun helm-hunks--find-hunk-other-window ()
+(defun helm-hunks--find-hunk-other-window-interactive ()
   "Interactive defun to jump to the changed line in the file in another window"
   (interactive)
   (with-helm-alive-p
     (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-window)))
 
+(defun helm-hunks--stage-hunk-interactive ()
+  "Interactive defun to stage the currently selected helm candidate's hunk (`real' value)"
+  (interactive)
+  (with-helm-alive-p
+    (let ((real (helm-get-selection)))
+      (when real
+        (helm-hunks--stage-hunk real)
+        (helm-refresh)))))
+
+(defun helm-hunks--stage-hunk (real)
+  "Stage a hunk. Will `cd' to the git root to make git diff paths align with paths on disk as we're not nescessarily in the git root when helm-hunks is run, and diffs are gathered."
+  (let ((raw-hunk-diff (cdr (assoc 'raw-content real))))
+    (with-temp-buffer
+      (insert raw-hunk-diff)
+      (unless (zerop
+               (shell-command-on-region
+                (point-min)
+                (point-max)
+                (format "cd %s && git apply --unidiff-zero --cached -"
+                        (shell-quote-argument (helm-hunks--get-git-root)))
+                t t nil))
+        (buffer-string)))))
+
 (defun helm-hunks--changes ()
-  "List changes, on the form (display . real) suitable as candidates for the helm-hunks source"
+  "List changes, on the form `(display . real)' suitable as candidates for the helm-hunks source"
   (reverse
    (let* ((hunks-by-file (helm-hunks--get-hunks-by-file (helm-hunks--get-file-names)
                                                         (helm-hunks--get-diffs)))
@@ -228,11 +249,10 @@
     (set-keymap-parent map helm-map)
     ;; TODO
     ;; (define-key map (kbd "C-r") 'helm-hunks--revert-hunk)
-    ;; TODO
-    ;; (define-key map (kbd "C-s") 'helm-hunks--stage-hunk)
-    (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame)
-    (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window)
-    (define-key map (kbd "C-c p") 'helm-hunks--toggle-preview)
+    (define-key map (kbd "C-s") 'helm-hunks--stage-hunk-interactive)
+    (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame-interactive)
+    (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window-interactive)
+    (define-key map (kbd "C-c p") 'helm-hunks--toggle-preview-interactive)
     map)
   "Keymap for `helm-hunks'")
 
