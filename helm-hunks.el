@@ -174,10 +174,12 @@ favorite git-gutter on git changes")
         (helm-hunks--format-candidate-line file line type)))))
 
 (defun helm-hunks--format-candidate-multiline (file line type content)
+  "Formats a multiline hunk, with `content' fontified as diff"
   (let ((fontified-content (helm-hunks--fontify-as-diff content)))
     (format "%s:%s (%s)\n%s" file line type fontified-content)))
 
 (defun helm-hunks--format-candidate-line (file line type)
+  "Format a single line hunk"
   (format "%s:%s (%s)" file line type))
 
 (defun helm-hunks--find-hunk-with-fn (find-file-fn real)
