@@ -60,6 +60,15 @@
   nil
   "Is preview mode enabled, to show diff lines preview inside helm while navigating")
 
+(defvar helm-hunks-refresh-hook
+  nil
+  "Hooks triggered whenever helm-hunks trigger git changes, so you can refresh your
+favorite git-gutter on git changes")
+
+;; Refresh git-gutter+ on git changes
+(when (fboundp 'git-gutter+-refresh)
+  (add-hook 'helm-hunks-refresh-hook 'git-gutter+-refresh))
+
 (defun helm-hunks--get-file-names ()
   "List file names of changed files"
   (let* ((result (shell-command-to-string helm-hunks--cmd-file-names))
@@ -133,12 +142,13 @@
                           (parsed-hunks-with-file (helm-hunks--assoc-file-name file-name parsed-hunks)))
                      (cons file-name parsed-hunks-with-file))))
 
-(defun helm-hunks--toggle-preview-interactive ()
-  "Toggle diff lines preview mode inside helm, while helm is open"
-  (interactive)
-  (let ((is-preview (not helm-hunks--is-preview)))
-    (setq helm-hunks--is-preview is-preview)
-    (helm-refresh)))
+(defun helm-hunks--run-hooks-for-buffer-of-hunk (hunk)
+  "Runs refresh hooks with the buffer visiting the `hunk's file"
+  (let* ((path-of-hunk (cdr (assoc 'file hunk)))
+         (buffer-name (file-name-nondirectory path-of-hunk)))
+    (when buffer-name
+      (with-current-buffer buffer-name
+        (run-hooks 'helm-hunks-refresh-hook)))))
 
 (defun helm-hunks--format-candidate-display (file hunk)
   "Formats a hunk for display as a line in helm"
@@ -171,6 +181,13 @@
   "Jump to the changed line in the file using `find-file-other-window'"
   (helm-hunks--find-hunk-with-fn #'find-file-other-window real))
 
+(defun helm-hunks--toggle-preview-interactive ()
+  "Toggle diff lines preview mode inside helm, while helm is open"
+  (interactive)
+  (let ((is-preview (not helm-hunks--is-preview)))
+    (setq helm-hunks--is-preview is-preview)
+    (helm-refresh)))
+
 (defun helm-hunks--find-hunk-other-frame-interactive ()
   "Interactive defun to jump to the changed line in the file in another frame"
   (interactive)
@@ -190,7 +207,8 @@
     (let ((real (helm-get-selection)))
       (when real
         (helm-hunks--stage-hunk real)
-        (helm-refresh)))))
+        (helm-refresh)
+        (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
 
 (defun helm-hunks--stage-hunk (real)
   "Stage a hunk. Will `cd' to the git root to make git diff paths align with paths on disk as we're not nescessarily in the git root when helm-hunks is run, and diffs are gathered."
