@@ -159,17 +159,24 @@ favorite git-gutter on git changes")
     (font-lock-default-fontify-buffer)
     (buffer-string)))
 
-(defun helm-hunks--format-candidate-display (file hunk)
+(defun helm-hunks--format-candidate-for-display (file hunk)
   "Formats a hunk for display as a line in helm"
   (unless (equal file helm-hunks--msg-no-changes)
     (let* ((line (cdr (assoc 'line hunk)))
            (type (cdr (assoc 'type hunk)))
            (content (cdr (assoc 'content hunk)))
-           (fontified-content (helm-hunks--fontify-as-diff content)))
+           (is-content-empty (equal "" content)))
       (if (and helm-hunks--is-preview
-               (not (equal "" content)))
-          (format "%s:%s (%s)\n%s" file line type fontified-content)
-        (format "%s:%s (%s)" file line type)))))
+               (not is-content-empty))
+          (helm-hunks--format-candidate-multiline file line type content)
+        (helm-hunks--format-candidate-line file line type)))))
+
+(defun helm-hunks--format-candidate-multiline (file line type content)
+  (let ((fontified-content (helm-hunks--fontify-as-diff content)))
+    (format "%s:%s (%s)\n%s" file line type fontified-content)))
+
+(defun helm-hunks--format-candidate-line (file line type)
+  (format "%s:%s (%s)" file line type))
 
 (defun helm-hunks--find-hunk-with-fn (find-file-fn real)
   "Jump to the changed line in the file using the provided `find-file-fn' function"
@@ -194,9 +201,15 @@ favorite git-gutter on git changes")
 (defun helm-hunks--toggle-preview-interactive ()
   "Toggle diff lines preview mode inside helm, while helm is open"
   (interactive)
-  (let ((is-preview (not helm-hunks--is-preview)))
+  (let* ((is-preview (not helm-hunks--is-preview))
+         (hunk (helm-get-selection))
+         (file (cdr (assoc 'file hunk)))
+         (line (cdr (assoc 'line hunk)))
+         (type (cdr (assoc 'type hunk)))
+         (candidate (helm-hunks--format-candidate-line file line type)))
     (setq helm-hunks--is-preview is-preview)
-    (helm-refresh)))
+    (with-helm-alive-p
+      (helm-force-update candidate))))
 
 (defun helm-hunks--find-hunk-other-frame-interactive ()
   "Interactive defun to jump to the changed line in the file in another frame"
@@ -244,7 +257,7 @@ favorite git-gutter on git changes")
        (let* ((file (car hunk-by-file))
               (hunks (cdr hunk-by-file)))
          (dolist (hunk hunks)
-           (push `(,(helm-hunks--format-candidate-display file hunk) . ,hunk)
+           (push `(,(helm-hunks--format-candidate-for-display file hunk) . ,hunk)
                  changes)))))))
 
 (defun helm-hunks--candidates ()
