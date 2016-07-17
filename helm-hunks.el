@@ -4,7 +4,8 @@
 
 ;; Author: @torgeir
 ;; Version: 1.0.0
-;; Keywords: helm git hunks
+;; Keywords: helm git hunks vc
+;; Package-Requires: ((helm "0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -305,3 +306,6 @@ favorite git-gutter on git changes")
   (interactive)
   (helm :sources '(helm-hunks--source)
         :keymap helm-hunks--keymap))
+
+(provide 'helm-hunks)
+;;; helm-hunks.el ends here
