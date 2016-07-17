@@ -37,6 +37,8 @@
 ;;; Code:
 
 (require 'cl-macs)
+(require 'helm)
+(require 'subr-x)
 
 (defconst helm-hunks--diff-re
   "^@@ -\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? \\+\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? @@"
@@ -75,6 +77,10 @@ favorite git-gutter on git changes")
 (when (fboundp 'git-gutter+-refresh)
   (add-hook 'helm-hunks-refresh-hook 'git-gutter+-refresh))
 
+(defun helm-hunks--take (n lst)
+  "Take `n' elements of `lst'"
+  (butlast lst (- (length lst) n)))
+
 (defun helm-hunks--get-file-names ()
   "List file names of changed files"
   (let* ((result (shell-command-to-string helm-hunks--cmd-file-names))
@@ -87,8 +93,7 @@ favorite git-gutter on git changes")
          (split-diff-lines (split-string result "^diff --git a/"))
          (split-diff-lines-without-empties (delete "" split-diff-lines)))
     (mapcar (lambda (line)
-              (concat "diff --git a/" line)
-              line)
+              (concat "diff --git a/" line))
             split-diff-lines-without-empties)))
 
 (defun helm-hunks--extract-hunk-lines (diff)
@@ -107,7 +112,7 @@ favorite git-gutter on git changes")
   "Parse `raw-hunk' into hunk with `line', `content' and the `type' of change"
   (let* ((hunk-lines (split-string hunk-str "\n"))
          (hunk-header-line (car hunk-lines))
-         (content-lines (rest hunk-lines)))
+         (content-lines (cdr hunk-lines)))
     (when (string-match helm-hunks--diff-re hunk-header-line)
       (let* ((del-len (string-to-number (or (match-string 2 hunk-header-line) "1")))
              (add-line (string-to-number (match-string 3 hunk-header-line)))
@@ -138,7 +143,7 @@ favorite git-gutter on git changes")
   (cl-loop for file-name in file-names
            for diff-str in diffs-per-file
            collect (let* ((split-hunk (split-string diff-str "\r?\n"))
-                          (diff-header-lines (subseq split-hunk 0 4))
+                          (diff-header-lines (helm-hunks--take 4 split-hunk))
                           (diff-header-str (string-join diff-header-lines "\n"))
                           (rest-str (string-join (nthcdr 4 split-hunk) "\n"))
                           (hunks-lines (helm-hunks--extract-hunk-lines rest-str))
@@ -192,11 +197,8 @@ favorite git-gutter on git changes")
          (line (cdr (assoc 'line real)))
          (file-path (concat (helm-hunks--get-git-root) file)))
     (funcall find-file-fn file-path)
-    (goto-line line)))
-
-(defun helm-hunks--action-find-hunk (real)
-  "Jump to the changed line in the file using `find-file'"
-  (helm-hunks--find-hunk-with-fn #'find-file real))
+    (goto-char (point-min))
+    (forward-line (1- line))))
 
 (defun helm-hunks--action-find-hunk-other-frame (real)
   "Jump to the changed line in the file using `find-file-other-frame'"
@@ -272,7 +274,7 @@ favorite git-gutter on git changes")
 (defun helm-hunks--candidates ()
   "Candidates for the helm-hunks source, on the form (display . real)"
   (let ((candidates (helm-hunks--changes)))
-    (if (seq-empty-p candidates)
+    (if (equal nil candidates)
         `((,helm-hunks--msg-no-changes . nil))
       candidates)))
 
