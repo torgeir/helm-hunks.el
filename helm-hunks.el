@@ -31,6 +31,7 @@
 ;;; Todo:
 
 ;; TODO kill visited hunk from helm-hunks
+;; TODO color diffs in helm?
 
 ;;; Code:
 
