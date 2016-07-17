@@ -54,6 +54,10 @@
   "git rev-parse --show-toplevel"
   "Git command to find the root folder of the current repo")
 
+(defvar helm-hunks--cmd-git-apply
+  "git apply --unidiff-zero --cached -"
+  "Git command to apply the patch read from stdin")
+
 (defvar helm-hunks--msg-no-changes
   "No changes."
   "Message shown in the helm buffer when there are no changed hunks")
@@ -246,8 +250,9 @@ favorite git-gutter on git changes")
                (shell-command-on-region
                 (point-min)
                 (point-max)
-                (format "cd %s && git apply --unidiff-zero --cached -"
-                        (shell-quote-argument (helm-hunks--get-git-root)))
+                (format "cd %s && %s"
+                        (shell-quote-argument (helm-hunks--get-git-root))
+                        helm-hunks--cmd-git-apply)
                 t t nil))
         (buffer-string)))))
 
