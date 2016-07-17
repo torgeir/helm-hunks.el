@@ -31,7 +31,6 @@
 ;;; Todo:
 
 ;; TODO kill visited hunk from helm-hunks
-;; TODO color diffs in helm?
 
 ;;; Code:
 
@@ -151,15 +150,25 @@ favorite git-gutter on git changes")
       (with-current-buffer buffer-name
         (run-hooks 'helm-hunks-refresh-hook)))))
 
+(defun helm-hunks--fontify-as-diff (content)
+  "Fontify content as a diff shown in `diff-mode'"
+  (with-temp-buffer
+    (insert content)
+    (diff-mode)
+    (font-lock-default-function 'diff-mode)
+    (font-lock-default-fontify-buffer)
+    (buffer-string)))
+
 (defun helm-hunks--format-candidate-display (file hunk)
   "Formats a hunk for display as a line in helm"
   (unless (equal file helm-hunks--msg-no-changes)
     (let* ((line (cdr (assoc 'line hunk)))
            (type (cdr (assoc 'type hunk)))
-           (content (cdr (assoc 'content hunk))))
+           (content (cdr (assoc 'content hunk)))
+           (fontified-content (helm-hunks--fontify-as-diff content)))
       (if (and helm-hunks--is-preview
                (not (equal "" content)))
-          (format "%s:%s (%s)\n%s" file line type content)
+          (format "%s:%s (%s)\n%s" file line type fontified-content)
         (format "%s:%s (%s)" file line type)))))
 
 (defun helm-hunks--find-hunk-with-fn (find-file-fn real)
