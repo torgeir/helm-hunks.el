@@ -17,6 +17,8 @@ Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-
 
 Along with helm-follow-mode, this plugin will let you jump around and stage git hunks like never before!
 
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/helm-hunks.gif?raw=true" width="50%" alt="helm-hunks-features"/>
+
 ### Jump around
 
 Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-p` and `C-n`.
