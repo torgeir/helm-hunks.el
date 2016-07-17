@@ -1,14 +1,25 @@
-# helm-hunks - a helm interface for git hunks
+# helm-hunks.el
 
-A helm interface for jumping around git hunks. Along with helm-follow-mode, this plugin will let you jump around and stage git hunks like never before!
+A helm interface for git hunks.
+
+## Installing
+
+It's [soon™](https://github.com/melpa/melpa/pull/4049) on [MELPA](https://melpa.org/#/getting-started), so run `M-x package-install helm-hooks` to install it.
+
+Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-package) declaration
+
+```
+(use-package helm-hooks
+  :commands helm-hooks)
+```
 
 ## Features
 
-With `helm-hunks` you can..
+Along with helm-follow-mode, this plugin will let you jump around and stage git hunks like never before!
 
 ### Jump around
 
-Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `M-p` and `M-n`.
+Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-p` and `C-n`.
 
 ### Preview changes
 
