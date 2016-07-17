@@ -32,6 +32,7 @@
 ;;; Todo:
 
 ;; TODO kill visited hunk from helm-hunks
+;; TODO show staged hunks
 
 ;;; Code:
 
