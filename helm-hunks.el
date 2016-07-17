@@ -1,4 +1,4 @@
-;;; helm-hunks.el --- A git hunk source for helm -*- lexical-binding: t -*-
+;;; helm-hunks.el --- A helm interface for git hunks -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
