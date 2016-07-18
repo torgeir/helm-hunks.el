@@ -4,7 +4,7 @@ A helm interface for git hunks.
 
 ## Installing
 
-It's [soon™](https://github.com/melpa/melpa/pull/4049) on [MELPA](https://melpa.org/#/getting-started), so run `M-x package-install helm-hunks` to install it.
+It's on [MELPA](https://melpa.org/#/getting-started), so run `M-x package-install helm-hunks` to install it.
 
 Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-package) declaration
 
