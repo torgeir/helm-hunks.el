@@ -25,7 +25,7 @@ Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around
 
 ### Preview changes
 
-Hit `C-c p` inside helm-hunks to show diff previews in-line with the hunks. For even faster navigation, narrow the selection by typing in the helm buffer, like in any other helm plugin - this even works for parts of the actual diff!
+Hit `C-c C-p` inside helm-hunks to show diff previews in-line with the hunks. For even faster navigation, narrow the selection by typing in the helm buffer, like in any other helm plugin - this even works for parts of the actual diff!
 
 ### Stage hunks
 

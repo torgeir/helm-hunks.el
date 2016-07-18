@@ -325,7 +325,7 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
     (define-key map (kbd "C-s") 'helm-hunks--stage-hunk-interactive)
     (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame-interactive)
     (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window-interactive)
-    (define-key map (kbd "C-c p") 'helm-hunks--toggle-preview-interactive)
+    (define-key map (kbd "C-c C-p") 'helm-hunks--toggle-preview-interactive)
     map)
   "Keymap for `helm-hunks'.")
 
