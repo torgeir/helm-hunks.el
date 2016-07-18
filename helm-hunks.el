@@ -68,7 +68,7 @@
   nil
   "Is preview mode enabled, to show diff lines preview inside helm while navigating.")
 
-(defvar helm-hunks-refresh-hook
+(defcustom helm-hunks-refresh-hook
   nil
   "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes.")
 
