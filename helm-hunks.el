@@ -36,7 +36,7 @@
 
 ;;; Code:
 
-(require 'cl-macs)
+(require 'cl-lib)
 (require 'helm)
 (require 'subr-x)
 
