@@ -73,7 +73,8 @@
   "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes.")
 
 ;; Refresh git-gutter+ on git changes
-(when (fboundp 'git-gutter+-refresh)
+(when (and git-gutter+-mode
+           (fboundp 'git-gutter+-refresh))
   (add-hook 'helm-hunks-refresh-hook 'git-gutter+-refresh))
 
 (defun helm-hunks--take (n lst)
