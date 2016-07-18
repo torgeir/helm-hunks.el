@@ -17,7 +17,7 @@ Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-
 
 Along with helm-follow-mode, this plugin will let you jump around and stage git hunks like never before!
 
-<img src="https://github.com/torgeir/helm-hunks.el/blob/master/helm-hunks.gif?raw=true" width="50%" alt="helm-hunks-features"/>
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/helm-hunks.gif?raw=true" width="80%" alt="helm-hunks-features"/>
 
 ### Jump around
 
