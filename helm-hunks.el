@@ -40,6 +40,13 @@
 (require 'helm)
 (require 'subr-x)
 
+(defgroup helm-hunks nil
+  "A helm interface for git hunks")
+
+(defcustom helm-hunks-refresh-hook
+  nil
+  "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes.")
+
 (defconst helm-hunks--diff-re
   "^@@ -\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? \\+\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? @@"
   "Regex to match the git diff hunk lines, e.g `@@ -{del-line},{del-len} +{add-line},{add-len} @@'.")
@@ -67,10 +74,6 @@
 (defvar helm-hunks--is-preview
   nil
   "Is preview mode enabled, to show diff lines preview inside helm while navigating.")
-
-(defcustom helm-hunks-refresh-hook
-  nil
-  "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes.")
 
 ;; Refresh git-gutter+ on git changes
 (when (and git-gutter+-mode
