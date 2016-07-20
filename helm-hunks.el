@@ -76,7 +76,7 @@
   "Is preview mode enabled, to show diff lines preview inside helm while navigating.")
 
 ;; Refresh git-gutter+ on git changes
-(when (and (boundp git-gutter+-mode)
+(when (and (boundp 'git-gutter+-mode)
            git-gutter+-mode
            (fboundp 'git-gutter+-refresh))
   (add-hook 'helm-hunks-refresh-hook 'git-gutter+-refresh))
