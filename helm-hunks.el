@@ -315,6 +315,7 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
     :candidates-process 'helm-hunks--candidates
     :action '(("Go to hunk" . helm-hunks--action-find-hunk))
     :persistent-action 'helm-hunks--persistent-action
+    :persistent-help "[C-s] stage, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"                           
     :multiline t
     :nomark t
     :follow 1)
