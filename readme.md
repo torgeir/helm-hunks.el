@@ -10,7 +10,7 @@ Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-
 
 ```
 (use-package helm-hunks
-  :commands helm-hunks)
+  :commands (helm-hunks helm-hunks-current-buffer))
 ```
 
 ## Features
@@ -21,7 +21,7 @@ Along with helm-follow-mode, this plugin will let you jump around and stage git 
 
 ### Jump around
 
-Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-p` and `C-n`.
+Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-p` and `C-n`. Run `helm-hunks-current-buffer` to jump around the current buffer only.
 
 ### Preview changes
 
