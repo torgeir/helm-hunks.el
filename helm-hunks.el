@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.3.0
+;; Version: 1.4.0
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -25,8 +25,14 @@
 ;; A helm interface for browsing unstaged git hunks.
 ;;
 ;; Enable `helm-follow-mode' and trigger `helm-hunks' to jump around
-;; unstaged hunks like never before. Run `helm-hunks-current-buffer`
-;; to jump around the current buffer only.
+;; unstaged hunks like never before. Stage them with `C-s`.
+;;
+;; Run `helm-hunks-current-buffer` to jump around the current buffer only.
+;;
+;; Run `helm-hunks-staged` to jump around staged hunks, unstage with `C-u`.
+;;
+;; Run `helm-hunks-staged-current-buffer` to jump around staged hunks in
+;; the current buffer only, unstage with `C-u`.
 ;;
 ;; Credits/inspiration: git-gutter+ - https://github.com/nonsequitur/git-gutter-plus/
 
@@ -385,6 +391,20 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
          (helm-hunks--cmd-file-names-staged (format "%s --staged" helm-hunks--cmd-file-names))
          (helm-hunks--cmd-diffs helm-hunks--cmd-diffs-staged)
          (helm-hunks--cmd-file-names helm-hunks--cmd-file-names-staged))
+    (helm-hunks)))
+
+;;;###autoload
+(defun helm-hunks-staged-current-buffer ()
+  "Helm-hunks entry point staged hunks current buffer."
+  (interactive)
+  (let* ((current-file-relative (file-relative-name (buffer-file-name (current-buffer))))
+         (helm-hunks--is-staged t)
+         (helm-hunks--cmd-diffs-staged (format "%s --staged" helm-hunks--cmd-diffs))
+         (helm-hunks--cmd-file-names-staged (format "%s --staged" helm-hunks--cmd-file-names))
+         (helm-hunks--cmd-diffs-single-file (format "%s -- %s" helm-hunks--cmd-diffs-staged current-file-relative))
+         (helm-hunks--cmd-file-names-single-file (format "%s -- %s" helm-hunks--cmd-file-names-staged current-file-relative))
+         (helm-hunks--cmd-diffs helm-hunks--cmd-diffs-single-file)
+         (helm-hunks--cmd-file-names helm-hunks--cmd-file-names-single-file))
     (helm-hunks)))
 
 (provide 'helm-hunks)

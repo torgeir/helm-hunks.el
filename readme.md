@@ -10,7 +10,10 @@ Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-
 
 ```
 (use-package helm-hunks
-  :commands (helm-hunks helm-hunks-current-buffer helm-hunks-staged))
+  :commands (helm-hunks
+             helm-hunks-current-buffer
+             helm-hunks-staged
+             helm-hunks-staged-current-buffer))
 ```
 
 ## Features
@@ -37,7 +40,7 @@ Use `C-c C-o` and `C-c o` to open hunks in "other frame" and "other window", res
 
 ### Unstage/reset hunks
 
-To browse already staged hunks, run `helm-hunks-staged`, and use `C-u` to unstage/reset a hunk.
+To browse already staged hunks, run `helm-hunks-staged` or `helm-hunks-staged-current-buffer`, and use `C-u` to unstage/reset a hunk.
 
 ### Refresh git gutter indicators
 
