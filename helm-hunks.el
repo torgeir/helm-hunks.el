@@ -47,7 +47,8 @@
 (require 'subr-x)
 
 (defgroup helm-hunks nil
-  "A helm interface for git hunks")
+  "A helm interface for git hunks"
+  :group 'helm)
 
 (defcustom helm-hunks-refresh-hook
   nil
