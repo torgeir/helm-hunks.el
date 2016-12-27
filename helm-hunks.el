@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.4.0
+;; Version: 1.4.1
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -279,22 +279,8 @@ occured at and the `TYPE' of change."
   (with-helm-alive-p
     (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-window)))
 
-(defun helm-hunks--stage-or-unstage-hunk-interactive ()
-  "Interactive defun to stage the currently selected helm candidate's hunk (`real' value)."
-  (interactive)
-  (with-helm-alive-p
-    (let* ((real (helm-get-selection))
-           (n (1- (helm-candidate-number-at-point)))
-           (candidates (helm-get-cached-candidates helm-hunks--source))
-           (next-candidate (nth n candidates)))
-      (when real
-        (helm-hunks--stage-or-unstage-hunk real)
-        (helm-refresh)
-        (when next-candidate (when (> n 0) (helm-next-line n)))
-        (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
-
-(defun helm-hunks--stage-or-unstage-hunk (hunk)
-  "Stage a `HUNK'.
+(defun helm-hunks--run-cmd-on-hunk (cmd hunk)
+  "Runs git `CMD' on `HUNK'.
 
 Will `cd' to the git root to make git diff paths align with paths on disk as we're not nescessarily in the git root when `helm-hunks' is run, and diffs are gathered."
   (let ((raw-hunk-diff (cdr (assoc 'raw-content hunk))))
@@ -306,11 +292,45 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
                 (point-max)
                 (format "cd %s && %s"
                         (shell-quote-argument (helm-hunks--get-git-root))
-                        (if helm-hunks--is-staged
-                            helm-hunks--cmd-git-apply-reverse
-                          helm-hunks--cmd-git-apply))
+                        cmd)
                 t t nil))
         (buffer-string)))))
+
+(defun helm-hunks--perform-fn-with-selected-hunk (stage-or-unstage-hunk-fn)
+  "Perform `STAGE-OR-UNSTAGE-HUNK-FN' with the currently selected helm candidate's hunk (`real' value).
+
+Will refresh the helm buffer and keep the point's current position among the candidates."
+  (interactive)
+  (with-helm-alive-p
+    (let* ((real (helm-get-selection))
+           (n (1- (helm-candidate-number-at-point)))
+           (candidates (helm-get-cached-candidates helm-hunks--source))
+           (next-candidate (nth n candidates)))
+      (when real
+        (funcall stage-or-unstage-hunk-fn real)
+        (helm-refresh)
+        (when next-candidate (when (> n 0) (helm-next-line n)))
+        (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
+
+(defun helm-hunks--unstage-hunk (hunk)
+  "Run git command to apply the `HUNK' in reverse."
+  (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply-reverse hunk))
+
+(defun helm-hunks--stage-hunk (hunk)
+  "Run git command to apply the `HUNK'."
+  (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply hunk))
+
+(defun helm-hunks--unstage-hunk-interactive ()
+  "Interactive defun to unstage the currently selected hunk."
+  (interactive)
+  (when helm-hunks--is-staged
+    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--unstage-hunk)))
+
+(defun helm-hunks--stage-hunk-interactive ()
+  "Interactive defun to stage the currently selected hunk."
+  (interactive)
+  (when (not helm-hunks--is-staged)
+    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--stage-hunk)))
 
 (defun helm-hunks--changes ()
   "Create a list of candidates on the form `(display . real)' suitable for the `helm-hunks' source."
@@ -357,8 +377,8 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
     (set-keymap-parent map helm-map)
     ;; TODO
     ;; (define-key map (kbd "C-r") 'helm-hunks--revert-hunk)
-    (define-key map (kbd "C-u") 'helm-hunks--stage-or-unstage-hunk-interactive)
-    (define-key map (kbd "C-s") 'helm-hunks--stage-or-unstage-hunk-interactive)
+    (define-key map (kbd "C-u") 'helm-hunks--unstage-hunk-interactive)
+    (define-key map (kbd "C-s") 'helm-hunks--stage-hunk-interactive)
     (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame-interactive)
     (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window-interactive)
     (define-key map (kbd "C-c C-p") 'helm-hunks--toggle-preview-interactive)
