@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.2.0
+;; Version: 1.3.0
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -276,10 +276,14 @@ occured at and the `TYPE' of change."
   "Interactive defun to stage the currently selected helm candidate's hunk (`real' value)."
   (interactive)
   (with-helm-alive-p
-    (let ((real (helm-get-selection)))
+    (let* ((real (helm-get-selection))
+           (n (1- (helm-candidate-number-at-point)))
+           (candidates (helm-get-cached-candidates helm-hunks--source))
+           (next-candidate (nth n candidates)))
       (when real
         (helm-hunks--stage-or-unstage-hunk real)
         (helm-refresh)
+        (when next-candidate (when (> n 0) (helm-next-line n)))
         (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
 
 (defun helm-hunks--stage-or-unstage-hunk (hunk)
