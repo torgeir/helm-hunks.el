@@ -52,7 +52,9 @@
 
 (defcustom helm-hunks-refresh-hook
   nil
-  "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes.")
+  "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes."
+  :type 'hook
+  :group 'helm)
 
 (defconst helm-hunks--diff-re
   "^@@ -\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? \\+\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? @@"
@@ -86,6 +88,10 @@
   "No staged changes."
   "Message shown in the helm buffer when there are no staged hunks.")
 
+(defvar helm-hunks--is-staged
+  nil
+  "Is showing staged hunks.")
+
 (defun helm-hunks--msg-no-hunks ()
   "Message to show when there are no hunks to display."
   (if helm-hunks--is-staged
@@ -95,10 +101,6 @@
 (defvar helm-hunks--is-preview
   nil
   "Is preview mode enabled, to show diff lines preview inside helm while navigating.")
-
-(defvar helm-hunks--is-staged
-  nil
-  "Is showing staged hunks.")
 
 ;; Refresh git-gutter+ on git changes
 (when (and (boundp 'git-gutter+-mode)
@@ -296,6 +298,17 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
                 t t nil))
         (buffer-string)))))
 
+(defvar helm-hunks--source
+  (helm-build-async-source "Show hunks in project"
+    :candidates-process 'helm-hunks--candidates
+    :action '(("Go to hunk" . helm-hunks--action-find-hunk))
+    :persistent-action 'helm-hunks--persistent-action
+    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
+    :multiline t
+    :nomark t
+    :follow 1)
+  "Helm-hunks source to list changed hunks in the project.")
+
 (defun helm-hunks--perform-fn-with-selected-hunk (stage-or-unstage-hunk-fn)
   "Perform `STAGE-OR-UNSTAGE-HUNK-FN' with the currently selected helm candidate's hunk (`real' value).
 
@@ -360,17 +373,6 @@ Will refresh the helm buffer and keep the point's current position among the can
   "Persistent action to trigger on follow for the `helm-hunks' source. Jumps to the file of the `HUNK'."
   (unless (equal hunk (helm-hunks--msg-no-hunks))
     (helm-hunks--find-hunk-with-fn hunk #'find-file)))
-
-(defvar helm-hunks--source
-  (helm-build-async-source "Show hunks in project"
-    :candidates-process 'helm-hunks--candidates
-    :action '(("Go to hunk" . helm-hunks--action-find-hunk))
-    :persistent-action 'helm-hunks--persistent-action
-    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
-    :multiline t
-    :nomark t
-    :follow 1)
-  "Helm-hunks source to list changed hunks in the project.")
 
 (defvar helm-hunks--keymap
   (let ((map (make-sparse-keymap)))
