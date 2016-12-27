@@ -10,7 +10,7 @@ Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-
 
 ```
 (use-package helm-hunks
-  :commands (helm-hunks helm-hunks-current-buffer))
+  :commands (helm-hunks helm-hunks-current-buffer helm-hunks-staged))
 ```
 
 ## Features
@@ -35,6 +35,10 @@ For hunks you're ready to commit, hit `C-s` to stage the hunk directly from the 
 
 Use `C-c C-o` and `C-c o` to open hunks in "other frame" and "other window", respectively.
 
+### Unstage/reset hunks
+
+To browse already staged hunks, run `helm-hunks-staged`, and use `C-u` to unstage/reset a hunk.
+
 ### Refresh git gutter indicators
 
 Add a hook to `helm-hunks-refresh-hook` to refresh your favorite git gutter when hunks are staged. A hook for `git-gutter+` is already in place.
@@ -48,8 +52,8 @@ Add a hook to `helm-hunks-refresh-hook` to refresh your favorite git gutter when
 PRs welcome!
 
 - [ ] Kill hunks
-- [ ] Show staged hunks
-- [ ] Allow resetting staged hunks
+- [x] Allow resetting staged hunks
+- [x] Show staged hunks
 
 ## Credits/inspiration
 
