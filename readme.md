@@ -42,6 +42,10 @@ Use `C-c C-o` and `C-c o` to open hunks in "other frame" and "other window", res
 
 To browse already staged hunks, run `helm-hunks-staged` or `helm-hunks-staged-current-buffer`, and use `C-u` to unstage/reset a hunk.
 
+### Kill hunks
+
+Use `C-k` to kill hunks gone bad.
+
 ### Refresh git gutter indicators
 
 Add a hook to `helm-hunks-refresh-hook` to refresh your favorite git gutter when hunks are staged. A hook for `git-gutter+` is already in place.
@@ -54,7 +58,7 @@ Add a hook to `helm-hunks-refresh-hook` to refresh your favorite git gutter when
 
 PRs welcome!
 
-- [ ] Kill hunks
+- [x] Kill hunks
 - [x] Allow resetting staged hunks
 - [x] Show staged hunks
 

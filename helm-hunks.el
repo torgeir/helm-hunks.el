@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.4.1
+;; Version: 1.5.0
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -34,11 +34,9 @@
 ;; Run `helm-hunks-staged-current-buffer` to jump around staged hunks in
 ;; the current buffer only, unstage with `C-u`.
 ;;
+;; Kill hunks you wish undone with `C-k`.
+;;
 ;; Credits/inspiration: git-gutter+ - https://github.com/nonsequitur/git-gutter-plus/
-
-;;; Todo:
-
-;; TODO kill visited hunk from helm-hunks
 
 ;;; Code:
 
@@ -68,35 +66,29 @@
   "git --no-pager diff --no-color --no-ext-diff --unified=0"
   "Git command to show minimal diffs.")
 
-(defvar helm-hunks--cmd-git-root
+(defconst helm-hunks--cmd-git-root
   "git rev-parse --show-toplevel"
   "Git command to find the root folder of the current repo.")
 
-(defvar helm-hunks--cmd-git-apply
+(defconst helm-hunks--cmd-git-apply
   "git apply --unidiff-zero --cached -"
   "Git command to apply the patch read from stdin.")
 
-(defvar helm-hunks--cmd-git-apply-reverse
+(defconst helm-hunks--cmd-git-apply-reverse
   "git apply --unidiff-zero --cached --reverse -"
   "Git command to apply the patch read from stdin in reverse.")
 
-(defvar helm-hunks--msg-no-changes
+(defconst helm-hunks--msg-no-changes
   "No changes."
   "Message shown in the helm buffer when there are no changed hunks.")
 
-(defvar helm-hunks--msg-no-changes-staged
+(defconst helm-hunks--msg-no-changes-staged
   "No staged changes."
   "Message shown in the helm buffer when there are no staged hunks.")
 
 (defvar helm-hunks--is-staged
   nil
   "Is showing staged hunks.")
-
-(defun helm-hunks--msg-no-hunks ()
-  "Message to show when there are no hunks to display."
-  (if helm-hunks--is-staged
-      helm-hunks--msg-no-changes-staged
-    helm-hunks--msg-no-changes))
 
 (defvar helm-hunks--is-preview
   nil
@@ -111,6 +103,12 @@
 (defun helm-hunks--take (n lst)
   "Take `N' elements of `LST'."
   (butlast lst (- (length lst) n)))
+
+(defun helm-hunks--msg-no-hunks ()
+  "Message to show when there are no hunks to display."
+  (if helm-hunks--is-staged
+      helm-hunks--msg-no-changes-staged
+    helm-hunks--msg-no-changes))
 
 (defun helm-hunks--get-file-names ()
   "List file names of changed files."
@@ -158,15 +156,16 @@ diff content as an individual patch, `type' the type of change and
              (type (cond ((zerop del-len) 'added)
                          ((zerop add-len) 'deleted)
                          (t 'modified)))
-             (line (if (eq type 'deleted)
-                       (1+ add-line)
-                     add-line)))
+             (is-deleted (eq type 'deleted))
+             (line (if is-deleted (1+ add-line) add-line))
+             (line-end (if is-deleted line (1- (+ add-line add-len)))))
         (list (cons 'diff-header diff-header-str)
               (cons 'hunk-header hunk-header-line)
               (cons 'content content)
               (cons 'raw-content (concat diff-header-str "\n" hunk-str))
               (cons 'type type)
-              (cons 'line line))))))
+              (cons 'line line)
+              (cons 'line-end line-end))))))
 
 (defun helm-hunks--assoc-file-name (file-name hunks)
   "Associates `FILE-NAME' name with each hunk of the `HUNKS' list."
@@ -194,14 +193,6 @@ diff content as an individual patch, `type' the type of change and
                           (parsed-hunks-with-file (helm-hunks--assoc-file-name file-name parsed-hunks)))
                      (cons file-name parsed-hunks-with-file))))
 
-(defun helm-hunks--run-hooks-for-buffer-of-hunk (hunk)
-  "Run refresh hooks with the buffer visiting the `HUNK's file."
-  (let* ((path-of-hunk (cdr (assoc 'file hunk)))
-         (buffer-name (file-name-nondirectory path-of-hunk)))
-    (when buffer-name
-      (with-current-buffer buffer-name
-        (run-hooks 'helm-hunks-refresh-hook)))))
-
 (defun helm-hunks--fontify-as-diff (content)
   "Fontify `CONTENT' as a diff, like it's shown in `diff-mode'."
   (with-temp-buffer
@@ -210,19 +201,6 @@ diff content as an individual patch, `type' the type of change and
     (font-lock-default-function 'diff-mode)
     (font-lock-default-fontify-buffer)
     (buffer-string)))
-
-(defun helm-hunks--format-candidate-for-display (hunk)
-  "Formats `HUNK' for display as a line in helm."
-  (let ((file (cdr (assoc 'file hunk))))
-    (unless (equal file (helm-hunks--msg-no-hunks))
-      (let* ((line (cdr (assoc 'line hunk)))
-             (type (cdr (assoc 'type hunk)))
-             (content (cdr (assoc 'content hunk)))
-             (is-content-empty (equal "" content)))
-        (if (and helm-hunks--is-preview
-                 (not is-content-empty))
-            (helm-hunks--format-candidate-multiline file line type content)
-          (helm-hunks--format-candidate-line file line type))))))
 
 (defun helm-hunks--format-candidate-multiline (file line type content)
   "Formats a multiline hunk, fontifying the contents of the diff.
@@ -239,111 +217,18 @@ Includes the `FILE' the change occured in, the `LINE' the change
 occured at and the `TYPE' of change."
   (format "%s:%s (%s)" file line type))
 
-(defun helm-hunks--find-hunk-with-fn (hunk find-file-fn)
-  "Jump to the changed line in the file of the `HUNK' using the provided `FIND-FILE-FN' function."
-  (let* ((file (cdr (assoc 'file hunk)))
-         (line (cdr (assoc 'line hunk)))
-         (file-path (concat (helm-hunks--get-git-root) file)))
-    (funcall find-file-fn file-path)
-    (goto-char (point-min))
-    (forward-line (1- line))))
-
-(defun helm-hunks--action-find-hunk-other-frame (hunk)
-  "Jump to the changed line in the file of the `HUNK' using `find-file-other-frame'."
-  (helm-hunks--find-hunk-with-fn hunk #'find-file-other-frame))
-
-(defun helm-hunks--action-find-hunk-other-window (hunk)
-  "Jump to the changed line in the file of the `HUNK' using `find-file-other-window'."
-  (helm-hunks--find-hunk-with-fn hunk #'find-file-other-window))
-
-(defun helm-hunks--toggle-preview-interactive ()
-  "Toggle diff lines preview mode inside helm, while helm is open."
-  (interactive)
-  (let* ((is-preview (not helm-hunks--is-preview))
-         (hunk (helm-get-selection))
-         (file (cdr (assoc 'file hunk)))
-         (line (cdr (assoc 'line hunk)))
-         (type (cdr (assoc 'type hunk)))
-         (candidate (helm-hunks--format-candidate-line file line type)))
-    (setq helm-hunks--is-preview is-preview)
-    (with-helm-alive-p
-      (helm-force-update candidate))))
-
-(defun helm-hunks--find-hunk-other-frame-interactive ()
-  "Interactive defun to jump to the changed line in the file in another frame."
-  (interactive)
-  (with-helm-alive-p
-    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-frame)))
-
-(defun helm-hunks--find-hunk-other-window-interactive ()
-  "Interactive defun to jump to the changed line in the file in another window."
-  (interactive)
-  (with-helm-alive-p
-    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-window)))
-
-(defun helm-hunks--run-cmd-on-hunk (cmd hunk)
-  "Runs git `CMD' on `HUNK'.
-
-Will `cd' to the git root to make git diff paths align with paths on disk as we're not nescessarily in the git root when `helm-hunks' is run, and diffs are gathered."
-  (let ((raw-hunk-diff (cdr (assoc 'raw-content hunk))))
-    (with-temp-buffer
-      (insert raw-hunk-diff)
-      (unless (zerop
-               (shell-command-on-region
-                (point-min)
-                (point-max)
-                (format "cd %s && %s"
-                        (shell-quote-argument (helm-hunks--get-git-root))
-                        cmd)
-                t t nil))
-        (buffer-string)))))
-
-(defvar helm-hunks--source
-  (helm-build-async-source "Show hunks in project"
-    :candidates-process 'helm-hunks--candidates
-    :action '(("Go to hunk" . helm-hunks--action-find-hunk))
-    :persistent-action 'helm-hunks--persistent-action
-    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
-    :multiline t
-    :nomark t
-    :follow 1)
-  "Helm-hunks source to list changed hunks in the project.")
-
-(defun helm-hunks--perform-fn-with-selected-hunk (stage-or-unstage-hunk-fn)
-  "Perform `STAGE-OR-UNSTAGE-HUNK-FN' with the currently selected helm candidate's hunk (`real' value).
-
-Will refresh the helm buffer and keep the point's current position among the candidates."
-  (interactive)
-  (with-helm-alive-p
-    (let* ((real (helm-get-selection))
-           (n (1- (helm-candidate-number-at-point)))
-           (candidates (helm-get-cached-candidates helm-hunks--source))
-           (next-candidate (nth n candidates)))
-      (when real
-        (funcall stage-or-unstage-hunk-fn real)
-        (helm-refresh)
-        (when next-candidate (when (> n 0) (helm-next-line n)))
-        (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
-
-(defun helm-hunks--unstage-hunk (hunk)
-  "Run git command to apply the `HUNK' in reverse."
-  (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply-reverse hunk))
-
-(defun helm-hunks--stage-hunk (hunk)
-  "Run git command to apply the `HUNK'."
-  (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply hunk))
-
-(defun helm-hunks--unstage-hunk-interactive ()
-  "Interactive defun to unstage the currently selected hunk."
-  (interactive)
-  (when helm-hunks--is-staged
-    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--unstage-hunk)))
-
-(defun helm-hunks--stage-hunk-interactive ()
-  "Interactive defun to stage the currently selected hunk."
-  (interactive)
-  (when (not helm-hunks--is-staged)
-    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--stage-hunk)))
+(defun helm-hunks--format-candidate-for-display (hunk)
+  "Formats `HUNK' for display as a line in helm."
+  (let ((file (cdr (assoc 'file hunk))))
+    (unless (equal file (helm-hunks--msg-no-hunks))
+      (let* ((line (cdr (assoc 'line hunk)))
+             (type (cdr (assoc 'type hunk)))
+             (content (cdr (assoc 'content hunk)))
+             (is-content-empty (equal "" content)))
+        (if (and helm-hunks--is-preview
+                 (not is-content-empty))
+            (helm-hunks--format-candidate-multiline file line type content)
+          (helm-hunks--format-candidate-line file line type))))))
 
 (defun helm-hunks--changes ()
   "Create a list of candidates on the form `(display . real)' suitable for the `helm-hunks' source."
@@ -364,6 +249,23 @@ Will refresh the helm buffer and keep the point's current position among the can
         `((,(helm-hunks--msg-no-hunks) . nil))
       candidates)))
 
+(defun helm-hunks--find-hunk-with-fn (hunk find-file-fn)
+  "Jump to the changed line in the file of the `HUNK' using the provided `FIND-FILE-FN' function."
+  (let* ((file (cdr (assoc 'file hunk)))
+         (line (cdr (assoc 'line hunk)))
+         (file-path (concat (helm-hunks--get-git-root) file)))
+    (funcall find-file-fn file-path)
+    (goto-char (point-min))
+    (forward-line (1- line))))
+
+(defun helm-hunks--action-find-hunk-other-window (hunk)
+  "Jump to the changed line in the file of the `HUNK' using `find-file-other-window'."
+  (helm-hunks--find-hunk-with-fn hunk #'find-file-other-window))
+
+(defun helm-hunks--action-find-hunk-other-frame (hunk)
+  "Jump to the changed line in the file of the `HUNK' using `find-file-other-frame'."
+  (helm-hunks--find-hunk-with-fn hunk #'find-file-other-frame))
+
 (defun helm-hunks--action-find-hunk (hunk)
   "Action that triggers on RET for the `helm-hunks' source. Jumps to the file of the `HUNK'."
   (unless (equal hunk (helm-hunks--msg-no-hunks))
@@ -374,15 +276,156 @@ Will refresh the helm buffer and keep the point's current position among the can
   (unless (equal hunk (helm-hunks--msg-no-hunks))
     (helm-hunks--find-hunk-with-fn hunk #'find-file)))
 
+(defvar helm-hunks--source
+  (helm-build-async-source "Show hunks in project"
+    :candidates-process 'helm-hunks--candidates
+    :action '(("Go to hunk" . helm-hunks--action-find-hunk))
+    :persistent-action 'helm-hunks--persistent-action
+    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-k] kill, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
+    :multiline t
+    :nomark t
+    :follow 1)
+  "Helm-hunks source to list changed hunks in the project.")
+
+(defun helm-hunks--run-hooks-for-buffer-of-hunk (hunk)
+  "Run refresh hooks with the buffer visiting the `HUNK's file."
+  (let* ((path-of-hunk (cdr (assoc 'file hunk)))
+         (buffer-name (file-name-nondirectory path-of-hunk)))
+    (when buffer-name
+      (with-current-buffer buffer-name
+        (run-hooks 'helm-hunks-refresh-hook)))))
+
+(defun helm-hunks--perform-fn-with-selected-hunk (stage-or-unstage-hunk-fn)
+  "Perform `STAGE-OR-UNSTAGE-HUNK-FN' on the currently selected hunk.
+
+Will refresh the helm buffer and keep the point's current position among the candidates."
+  (interactive)
+  (with-helm-alive-p
+    (let* ((real (helm-get-selection))
+           (n (1- (helm-candidate-number-at-point)))
+           (candidates (helm-get-cached-candidates helm-hunks--source))
+           (next-candidate (nth n candidates)))
+      (when real
+        (funcall stage-or-unstage-hunk-fn real)
+        (helm-refresh)
+        (helm-beginning-of-buffer)
+        (when (and next-candidate (> n 0))
+          (helm-next-line n))
+        (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
+
+(defun helm-hunks--revert-collect-deleted-lines (content)
+  "Collects the deleted lines from the `CONTENT's of a hunk."
+  (with-temp-buffer
+    (insert content)
+    (goto-char (point-min))
+    (cl-loop while (re-search-forward "^-\\(.*?\\)$" nil t)
+             collect (match-string 1) into deleted-lines
+             finally return deleted-lines)))
+
+(defun helm-hunks--revert-added-hunk (hunk)
+  "Reverts lines added by `HUNK' by deleting them."
+  (let ((line (cdr (assoc 'line hunk)))
+        (line-end (cdr (assoc 'line-end hunk)))
+        (start-point (point)))
+    (forward-line (1+ (- line-end line)))
+    (delete-region start-point (point))))
+
+(defun helm-hunks--revert-deleted-hunk (hunk)
+  "Reverts lines deleted by `HUNK' by adding them back."
+  (let ((content (cdr (assoc 'content hunk))))
+    (dolist (line (helm-hunks--revert-collect-deleted-lines content))
+      (insert (concat line "\n")))))
+
+(defun helm-hunks--run-cmd-on-hunk (cmd hunk)
+  "Run git `CMD' on `HUNK'.
+
+Will `cd' to the git root to make git diff paths align with paths on disk as we're not nescessarily in the git root when `helm-hunks' is run, and diffs are gathered."
+  (let ((raw-hunk-diff (cdr (assoc 'raw-content hunk))))
+    (with-temp-buffer
+      (insert raw-hunk-diff)
+      (unless (zerop
+               (shell-command-on-region
+                (point-min)
+                (point-max)
+                (format "cd %s && %s"
+                        (shell-quote-argument (helm-hunks--get-git-root))
+                        cmd)
+                t t nil))
+        (buffer-string)))))
+
+(defun helm-hunks--revert-hunk (hunk)
+  "Reverts the actions of the `HUNK'."
+  (helm-hunks--action-find-hunk hunk)
+  (let* ((type (cdr (assoc 'type hunk)))
+         (revert-fn (cl-case type
+                      (added #'helm-hunks--revert-added-hunk)
+                      (deleted #'helm-hunks--revert-deleted-hunk)
+                      (modified (lambda (hunk)
+                                  (helm-hunks--revert-added-hunk hunk)
+                                  (helm-hunks--revert-deleted-hunk hunk))))))
+    (helm-hunks--perform-fn-with-selected-hunk revert-fn))
+  (save-buffer)
+  (other-window -1))
+
+(defun helm-hunks--stage-hunk (hunk)
+  "Run git command to apply the `HUNK'."
+  (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply hunk))
+
+(defun helm-hunks--unstage-hunk (hunk)
+  "Run git command to apply the `HUNK' in reverse."
+  (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply-reverse hunk))
+
+(defun helm-hunks--revert-hunk-interactive ()
+  "Interactive defun to revert the currently selected hunk."
+  (interactive)
+  (when (not helm-hunks--is-staged)
+    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--revert-hunk)))
+
+(defun helm-hunks--stage-hunk-interactive ()
+  "Interactive defun to stage the currently selected hunk."
+  (interactive)
+  (when (not helm-hunks--is-staged)
+    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--stage-hunk)))
+
+(defun helm-hunks--unstage-hunk-interactive ()
+  "Interactive defun to unstage the currently selected hunk."
+  (interactive)
+  (when helm-hunks--is-staged
+    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--unstage-hunk)))
+
+(defun helm-hunks--find-hunk-other-window-interactive ()
+  "Interactive defun to jump to the changed line in the file in another window."
+  (interactive)
+  (with-helm-alive-p
+    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-window)))
+
+(defun helm-hunks--find-hunk-other-frame-interactive ()
+  "Interactive defun to jump to the changed line in the file in another frame."
+  (interactive)
+  (with-helm-alive-p
+    (helm-exit-and-execute-action #'helm-hunks--action-find-hunk-other-frame)))
+
+(defun helm-hunks--toggle-preview-interactive ()
+  "Toggle diff lines preview mode inside helm, while helm is open."
+  (interactive)
+  (let* ((is-preview (not helm-hunks--is-preview))
+         (hunk (helm-get-selection))
+         (file (cdr (assoc 'file hunk)))
+         (line (cdr (assoc 'line hunk)))
+         (type (cdr (assoc 'type hunk)))
+         (candidate (helm-hunks--format-candidate-line file line type)))
+    (setq helm-hunks--is-preview is-preview)
+    (with-helm-alive-p
+      (helm-force-update candidate))))
+
 (defvar helm-hunks--keymap
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map helm-map)
-    ;; TODO
-    ;; (define-key map (kbd "C-r") 'helm-hunks--revert-hunk)
-    (define-key map (kbd "C-u") 'helm-hunks--unstage-hunk-interactive)
+    (define-key map (kbd "C-k") 'helm-hunks--revert-hunk-interactive)
     (define-key map (kbd "C-s") 'helm-hunks--stage-hunk-interactive)
+    (define-key map (kbd "C-u") 'helm-hunks--unstage-hunk-interactive)
+    (define-key map (kbd "C-c o")   'helm-hunks--find-hunk-other-window-interactive)
     (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame-interactive)
-    (define-key map (kbd "C-c o") 'helm-hunks--find-hunk-other-window-interactive)
     (define-key map (kbd "C-c C-p") 'helm-hunks--toggle-preview-interactive)
     map)
   "Keymap for `helm-hunks'.")
