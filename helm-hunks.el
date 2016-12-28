@@ -296,7 +296,7 @@ occured at and the `TYPE' of change."
         (run-hooks 'helm-hunks-refresh-hook)))))
 
 (defun helm-hunks--perform-fn-with-selected-hunk (stage-or-unstage-hunk-fn)
-  "Perform `STAGE-OR-UNSTAGE-HUNK-FN' with the currently selected helm candidate's hunk (`real' value).
+  "Perform `STAGE-OR-UNSTAGE-HUNK-FN' on the currently selected hunk.
 
 Will refresh the helm buffer and keep the point's current position among the candidates."
   (interactive)
@@ -335,7 +335,7 @@ Will refresh the helm buffer and keep the point's current position among the can
       (insert (concat line "\n")))))
 
 (defun helm-hunks--run-cmd-on-hunk (cmd hunk)
-  "Runs git `CMD' on `HUNK'.
+  "Run git `CMD' on `HUNK'.
 
 Will `cd' to the git root to make git diff paths align with paths on disk as we're not nescessarily in the git root when `helm-hunks' is run, and diffs are gathered."
   (let ((raw-hunk-diff (cdr (assoc 'raw-content hunk))))
