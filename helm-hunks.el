@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.4.1
+;; Version: 1.5.0
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -34,11 +34,9 @@
 ;; Run `helm-hunks-staged-current-buffer` to jump around staged hunks in
 ;; the current buffer only, unstage with `C-u`.
 ;;
+;; Kill hunks you wish undone with `C-k`.
+;;
 ;; Credits/inspiration: git-gutter+ - https://github.com/nonsequitur/git-gutter-plus/
-
-;;; Todo:
-
-;; TODO kill visited hunk from helm-hunks
 
 ;;; Code:
 
@@ -158,15 +156,16 @@ diff content as an individual patch, `type' the type of change and
              (type (cond ((zerop del-len) 'added)
                          ((zerop add-len) 'deleted)
                          (t 'modified)))
-             (line (if (eq type 'deleted)
-                       (1+ add-line)
-                     add-line)))
+             (is-deleted (eq type 'deleted))
+             (line (if is-deleted (1+ add-line) add-line))
+             (line-end (if is-deleted line (1- (+ add-line add-len)))))
         (list (cons 'diff-header diff-header-str)
               (cons 'hunk-header hunk-header-line)
               (cons 'content content)
               (cons 'raw-content (concat diff-header-str "\n" hunk-str))
               (cons 'type type)
-              (cons 'line line))))))
+              (cons 'line line)
+              (cons 'line-end line-end))))))
 
 (defun helm-hunks--assoc-file-name (file-name hunks)
   "Associates `FILE-NAME' name with each hunk of the `HUNKS' list."
@@ -303,7 +302,7 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
     :candidates-process 'helm-hunks--candidates
     :action '(("Go to hunk" . helm-hunks--action-find-hunk))
     :persistent-action 'helm-hunks--persistent-action
-    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
+    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-k] kill, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
     :multiline t
     :nomark t
     :follow 1)
@@ -325,6 +324,43 @@ Will refresh the helm buffer and keep the point's current position among the can
         (when next-candidate (when (> n 0) (helm-next-line n)))
         (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
 
+(defun helm-hunks--revert-added-hunk (hunk)
+  "Reverts lines added by `HUNK' by deleting them."
+  (let ((line (cdr (assoc 'line hunk)))
+        (line-end (cdr (assoc 'line-end hunk)))
+        (start-point (point)))
+    (forward-line (1+ (- line-end line)))
+    (delete-region start-point (point))))
+
+(defun helm-hunks--revert-collect-deleted-lines (content)
+  "Collects the deleted lines from the `CONTENT's of a hunk."
+  (with-temp-buffer
+    (insert content)
+    (goto-char (point-min))
+    (cl-loop while (re-search-forward "^-\\(.*?\\)$" nil t)
+             collect (match-string 1) into deleted-lines
+             finally return deleted-lines)))
+
+(defun helm-hunks--revert-deleted-hunk (hunk)
+  "Reverts lines deleted by `HUNK' by adding them back."
+  (let ((content (cdr (assoc 'content hunk))))
+    (dolist (line (helm-hunks--revert-collect-deleted-lines content))
+      (insert (concat line "\n")))))
+
+(defun helm-hunks--revert-hunk (hunk)
+  "Reverts the actions of the `HUNK'."
+  (helm-hunks--action-find-hunk hunk)
+  (let* ((type (cdr (assoc 'type hunk)))
+         (revert-fn (cl-case type
+                      (added #'helm-hunks--revert-added-hunk)
+                      (deleted #'helm-hunks--revert-deleted-hunk)
+                      (modified (lambda (hunk)
+                                  (helm-hunks--revert-added-hunk hunk)
+                                  (helm-hunks--revert-deleted-hunk hunk))))))
+    (helm-hunks--perform-fn-with-selected-hunk revert-fn))
+  (save-buffer)
+  (other-window -1))
+
 (defun helm-hunks--unstage-hunk (hunk)
   "Run git command to apply the `HUNK' in reverse."
   (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply-reverse hunk))
@@ -332,6 +368,12 @@ Will refresh the helm buffer and keep the point's current position among the can
 (defun helm-hunks--stage-hunk (hunk)
   "Run git command to apply the `HUNK'."
   (helm-hunks--run-cmd-on-hunk helm-hunks--cmd-git-apply hunk))
+
+(defun helm-hunks--revert-hunk-interactive ()
+  "Interactive defun to revert the currently selected hunk."
+  (interactive)
+  (when (not helm-hunks--is-staged)
+    (helm-hunks--perform-fn-with-selected-hunk #'helm-hunks--revert-hunk)))
 
 (defun helm-hunks--unstage-hunk-interactive ()
   "Interactive defun to unstage the currently selected hunk."
@@ -377,8 +419,7 @@ Will refresh the helm buffer and keep the point's current position among the can
 (defvar helm-hunks--keymap
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map helm-map)
-    ;; TODO
-    ;; (define-key map (kbd "C-r") 'helm-hunks--revert-hunk)
+    (define-key map (kbd "C-k") 'helm-hunks--revert-hunk-interactive)
     (define-key map (kbd "C-u") 'helm-hunks--unstage-hunk-interactive)
     (define-key map (kbd "C-s") 'helm-hunks--stage-hunk-interactive)
     (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame-interactive)
