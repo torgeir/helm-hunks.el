@@ -308,7 +308,9 @@ Will refresh the helm buffer and keep the point's current position among the can
       (when real
         (funcall stage-or-unstage-hunk-fn real)
         (helm-refresh)
-        (when next-candidate (when (> n 0) (helm-next-line n)))
+        (helm-beginning-of-buffer)
+        (when (and next-candidate (> n 0))
+          (helm-next-line n))
         (helm-hunks--run-hooks-for-buffer-of-hunk real)))))
 
 (defun helm-hunks--revert-collect-deleted-lines (content)
