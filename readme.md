@@ -20,31 +20,41 @@ Or preferably using the ingenious [use-package](https://github.com/jwiegley/use-
 
 Along with helm-follow-mode, this plugin will let you jump around and stage git hunks like never before!
 
-<img src="https://github.com/torgeir/helm-hunks.el/blob/master/helm-hunks.gif?raw=true" width="80%" alt="helm-hunks-features"/>
-
 ### Jump around
 
 Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-n` and `C-p`. Run `helm-hunks-current-buffer` to jump around the current buffer only.
+
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/demos/helm-hunks--jump.gif?raw=true" width="80%" alt="helm-hunks-feature-jump"/>
 
 ### Preview changes
 
 Hit `C-c C-p` inside helm-hunks to show diff previews in-line with the hunks. For even faster navigation, narrow the selection by typing in the helm buffer, like in any other helm plugin - this even works for parts of the actual diff!
 
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/demos/helm-hunks--preview.gif?raw=true" width="80%" alt="helm-hunks-feature-preview"/>
+
 ### Stage hunks
 
 For hunks you're ready to commit, hit `C-s` to stage the hunk directly from the helm-hunks buffer.
+
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/demos/helm-hunks--stage.gif?raw=true" width="80%" alt="helm-hunks-feature-stage"/>
 
 ### Open hunk in other frame/window
 
 Use `C-c C-o` and `C-c o` to open hunks in "other frame" and "other window", respectively.
 
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/demos/helm-hunks--open.gif?raw=true" width="80%" alt="helm-hunks-feature-open"/>
+
 ### Unstage/reset hunks
 
 To browse already staged hunks, run `helm-hunks-staged` or `helm-hunks-staged-current-buffer`, and use `C-u` to unstage/reset a hunk.
 
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/demos/helm-hunks--unstage.gif?raw=true" width="80%" alt="helm-hunks-feature-unstage"/>
+
 ### Kill hunks
 
 Use `C-k` to kill hunks gone bad.
+
+<img src="https://github.com/torgeir/helm-hunks.el/blob/master/demos/helm-hunks--kill.gif?raw=true" width="80%" alt="helm-hunks-feature-kill"/>
 
 ### Refresh git gutter indicators
 
