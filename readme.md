@@ -1,6 +1,6 @@
 # helm-hunks.el
 
-A helm interface for git hunks.
+A helm interface for git hunks - browsing, staging, unstaging and killing.
 
 ## Installing
 
@@ -24,7 +24,7 @@ Along with helm-follow-mode, this plugin will let you jump around and stage git 
 
 ### Jump around
 
-Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-p` and `C-n`. Run `helm-hunks-current-buffer` to jump around the current buffer only.
+Run `M-x helm-hunks`, turn on `helm-follow-mode` with `C-c C-f`, and jump around using `C-n` and `C-p`. Run `helm-hunks-current-buffer` to jump around the current buffer only.
 
 ### Preview changes
 
