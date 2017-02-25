@@ -2,6 +2,8 @@
 
 A helm interface for git hunks - browsing, staging, unstaging and killing.
 
+[![MELPA](https://melpa.org/packages/helm-hunks-badge.svg)](https://melpa.org/#/helm-hunks)
+
 ## Installing
 
 It's on [MELPA](https://melpa.org/#/getting-started), so run `M-x package-install helm-hunks` to install it.
