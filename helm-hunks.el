@@ -57,6 +57,11 @@
   :type 'hook
   :group 'helm)
 
+(defvar helm-hunks-preview-diffs
+  nil
+  "Enable preview. Shows diff lines preview inside helm while navigating.
+`helm-hunks' will modify this var when toggling preview inside of the helm.")
+
 (defconst helm-hunks--diff-re
   "^@@ -\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? \\+\\([0-9]+\\)\\(?:,\\([0-9]+\\)\\)? @@"
   "Regex to match the git diff hunk lines, e.g `@@ -{del-line},{del-len} +{add-line},{add-len} @@'.")
@@ -92,10 +97,6 @@
 (defvar helm-hunks--is-staged
   nil
   "Is showing staged hunks.")
-
-(defvar helm-hunks--is-preview
-  nil
-  "Is preview mode enabled, to show diff lines preview inside helm while navigating.")
 
 ;; Refresh git-gutter+ on git changes
 (when (and (boundp 'git-gutter+-mode)
@@ -228,7 +229,7 @@ occured at and the `TYPE' of change."
              (type (cdr (assoc 'type hunk)))
              (content (cdr (assoc 'content hunk)))
              (is-content-empty (equal "" content)))
-        (if (and helm-hunks--is-preview
+        (if (and helm-hunks-preview-diffs
                  (not is-content-empty))
             (helm-hunks--format-candidate-multiline file line type content)
           (helm-hunks--format-candidate-line file line type))))))
@@ -424,13 +425,13 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
 (defun helm-hunks--toggle-preview-interactive ()
   "Toggle diff lines preview mode inside helm, while helm is open."
   (interactive)
-  (let* ((is-preview (not helm-hunks--is-preview))
+  (let* ((is-preview (not helm-hunks-preview-diffs))
          (hunk (helm-get-selection))
          (file (cdr (assoc 'file hunk)))
          (line (cdr (assoc 'line hunk)))
          (type (cdr (assoc 'type hunk)))
          (candidate (helm-hunks--format-candidate-line file line type)))
-    (setq helm-hunks--is-preview is-preview)
+    (setq helm-hunks-preview-diffs is-preview)
     (with-helm-alive-p
       (helm-force-update candidate))))
 
