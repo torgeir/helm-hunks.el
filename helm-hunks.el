@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.5.1
+;; Version: 1.6.1
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -39,6 +39,10 @@
 ;; Preview hunk changes with `C-c C-p', and jump to hunks in "other window"
 ;; or "other frame" with `C-c o' and `C-c C-o', respectively.
 ;;
+;; Commit with `C-c C-c`, amend with `C-c C-a`.
+;;
+;; Quit with `C-c C-k'.
+;;
 ;; Credits/inspiration: git-gutter+ - https://github.com/nonsequitur/git-gutter-plus/
 
 ;;; Code:
@@ -56,6 +60,14 @@
   "Hooks triggered whenever `helm-hunks' trigger git changes, so you can refresh your favorite git-gutter on git changes."
   :type 'hook
   :group 'helm)
+
+(defvar helm-hunks-commit-fn
+  'magit-commit
+  "Defun to call interactively for committing, defaults to magit.")
+
+(defvar helm-hunks-commit-amend-fn
+  'magit-commit-amend
+  "Defun to call interactively for amending, defaults to magit.")
 
 (defvar helm-hunks-preview-diffs
   nil
@@ -289,6 +301,9 @@ occured at and the `TYPE' of change."
     (define-key map (kbd "C-c o")   'helm-hunks--find-hunk-other-window-interactive)
     (define-key map (kbd "C-c C-o") 'helm-hunks--find-hunk-other-frame-interactive)
     (define-key map (kbd "C-c C-p") 'helm-hunks--toggle-preview-interactive)
+    (define-key map (kbd "C-c C-c") 'helm-hunks--commit)
+    (define-key map (kbd "C-c C-a") 'helm-hunks--commit-amend)
+    (define-key map (kbd "C-c C-k") 'helm-hunks--quit)
     map)
   "Keymap for `helm-hunks'.")
 
@@ -297,7 +312,7 @@ occured at and the `TYPE' of change."
     :candidates-process 'helm-hunks--candidates
     :action '(("Go to hunk" . helm-hunks--action-find-hunk))
     :persistent-action 'helm-hunks--persistent-action
-    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-k] kill, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window"
+    :persistent-help "[C-s] stage, [C-u] unstage/reset, [C-k] kill, [C-c C-p] show diffs, [C-c C-o] find other frame, [C-c o] find other window, [C-c C-c] commit, [C-c C-a] amend, [C-c C-k] quit"
     :multiline t
     :keymap helm-hunks--keymap
     :nomark t
@@ -434,6 +449,23 @@ Will `cd' to the git root to make git diff paths align with paths on disk as we'
     (setq helm-hunks-preview-diffs is-preview)
     (with-helm-alive-p
       (helm-force-update candidate))))
+
+(defun helm-hunks--commit ()
+  "Safe call to `helm-hunks-commit-fn' for committing."
+  (interactive)
+  (when (fboundp helm-hunks-commit-fn)
+    (helm-run-after-exit helm-hunks-commit-fn)))
+
+(defun helm-hunks--commit-amend ()
+  "Safe call to `helm-hunks-commit-amend-fn' for amending."
+  (interactive)
+  (when (fboundp helm-hunks-commit-amend-fn)
+    (helm-run-after-exit helm-hunks-commit-amend-fn)))
+
+(defun helm-hunks--quit ()
+  "Quit Helm-hunks."
+  (interactive)
+  (helm-exit-minibuffer))
 
 ;;;###autoload
 (defun helm-hunks ()

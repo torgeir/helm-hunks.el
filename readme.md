@@ -72,6 +72,14 @@ Add a hook to `helm-hunks-refresh-hook` to refresh your favorite git gutter when
 (add-hook 'helm-hunks-refresh-hook 'git-gutter+-refresh)
 ```
 
+### Commit or amend
+
+Use `C-c C-c` to pop open a commit dialog or amend to the previous with `C-c C-a`.
+
+### Quit
+
+`C-c C-k` quits.
+
 ## Ideas
 
 PRs welcome!
