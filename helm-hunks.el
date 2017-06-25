@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 ;; Author: @torgeir
-;; Version: 1.6.1
+;; Version: 1.6.2
 ;; Keywords: helm git hunks vc
 ;; Package-Requires: ((emacs "24.4") (helm "1.9.8"))
 
@@ -149,7 +149,7 @@
 
 (defun helm-hunks--get-git-root ()
   "Get the root folder of the current git repository."
-  (let* ((result (shell-command-to-string helm-hunks--cmd-git-root)))
+  (let ((result (shell-command-to-string helm-hunks--cmd-git-root)))
     (file-name-as-directory
      (replace-regexp-in-string "\r?\n" "" result))))
 
@@ -190,6 +190,22 @@ diff content as an individual patch, `type' the type of change and
                   hunk))
           hunks))
 
+(defun helm-hunks--take-before-diff (acc l)
+  "Grab all lines before the one starting with @@."
+  (let ((head (car l)))
+    (if (or (null head)
+            (string-match-p "^@@.*" head))
+        acc
+      (helm-hunks--take-before-diff (append acc (list head)) (cdr l)))))
+
+(defun helm-hunks--drop-before-diff (l)
+  "Throw away all lines before the one starting with @@."
+  (let ((head (car l)))
+    (if (or (not head)
+            (string-match-p "^@@.*" head))
+        l
+      (helm-hunks--drop-before-diff (cdr l)))))
+
 (defun helm-hunks--get-hunks-by-file (file-names diffs-per-file)
   "Join the changed file names with their corresponding hunks in a list.
 
@@ -199,9 +215,9 @@ diff content as an individual patch, `type' the type of change and
   (cl-loop for file-name in file-names
            for diff-str in diffs-per-file
            collect (let* ((split-hunk (split-string diff-str "\r?\n"))
-                          (diff-header-lines (helm-hunks--take 4 split-hunk))
+                          (diff-header-lines (helm-hunks--take-before-diff '() split-hunk))
                           (diff-header-str (string-join diff-header-lines "\n"))
-                          (rest-str (string-join (nthcdr 4 split-hunk) "\n"))
+                          (rest-str (string-join (helm-hunks--drop-before-diff split-hunk) "\n"))
                           (hunks-lines (helm-hunks--extract-hunk-lines rest-str))
                           (parsed-hunks (mapcar (lambda (hunk-lines)
                                                   (helm-hunks--parse-hunk diff-header-str hunk-lines))
